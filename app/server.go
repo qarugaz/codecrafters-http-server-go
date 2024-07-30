@@ -5,45 +5,53 @@ import (
 	"net"
 	"os"
 	"strings"
-	// Uncomment this block to pass the first stage
-	// "net"
-	// "os"
 )
 
 func main() {
-	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
-
-	// Uncomment this block to pass the first stage
 
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
 	if err != nil {
 		fmt.Println("Failed to bind to port 4221")
 		os.Exit(1)
 	}
+	defer l.Close()
 
 	conn, err := l.Accept()
 	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
+		fmt.Println("Error accepting connection:", err)
 		os.Exit(1)
 	}
+	defer conn.Close()
 
-	req := make([]byte, 1024)
-	_, err = conn.Read(req)
+	buffer := make([]byte, 1024)
+	_, err = conn.Read(buffer)
 	if err != nil {
-		fmt.Println("Error reading request: ", err.Error())
+		fmt.Println("Error reading request:", err)
+		return
 	}
 
-	if !strings.HasPrefix(string(req), "GET / HTTP/1.1") {
-		_, err := conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
-		if err != nil {
-			return
-		}
+	requestLine := strings.Split(string(buffer), "\r\n")[0]
+	requestParts := strings.Split(requestLine, " ")
+
+	if len(requestParts) < 2 {
+		fmt.Println("Invalid request")
+		return
 	}
 
-	_, err = conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+	path := requestParts[1]
+	response := ""
+
+	if path == "/" {
+		response = "HTTP/1.1 200 OK\r\n\r\n"
+	} else if parts := strings.SplitN(path, "/", 3); len(parts) >= 2 && parts[1] == "echo" {
+		response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + fmt.Sprint(len(parts[2])) + "\r\n\r\n" + parts[2]
+	} else {
+		response = "HTTP/1.1 404 Not Found\r\n\r\n"
+	}
+	_, err = conn.Write([]byte(response))
+
 	if err != nil {
-		fmt.Println("Error writing to connection: ", err.Error())
-		os.Exit(1)
+		fmt.Println("Error writing to connection:", err)
 	}
 }
