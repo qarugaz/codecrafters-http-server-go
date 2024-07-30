@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	// Uncomment this block to pass the first stage
 	// "net"
 	// "os"
@@ -26,6 +27,20 @@ func main() {
 		fmt.Println("Error accepting connection: ", err.Error())
 		os.Exit(1)
 	}
+
+	req := make([]byte, 1024)
+	_, err = conn.Read(req)
+	if err != nil {
+		fmt.Println("Error reading request: ", err.Error())
+	}
+
+	if !strings.HasPrefix(string(req), "GET / HTTP/1.1") {
+		_, err := conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
+		if err != nil {
+			return
+		}
+	}
+
 	_, err = conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
 	if err != nil {
 		fmt.Println("Error writing to connection: ", err.Error())
