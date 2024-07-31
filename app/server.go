@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"net"
@@ -46,7 +48,18 @@ func handleConnection(conn net.Conn) {
 					}
 				}
 				if hasGzip {
-					response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\nContent-Length: " + fmt.Sprint(len(parts[2])) + "\r\n\r\n" + parts[2]
+					var buffer bytes.Buffer
+					writer := gzip.NewWriter(&buffer)
+					_, err := writer.Write([]byte(parts[2]))
+					if err != nil {
+						return
+					}
+					err = writer.Close()
+					if err != nil {
+						return
+					}
+					content := buffer.String()
+					response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\nContent-Length: " + fmt.Sprint(len(content)) + "\r\n\r\n" + content
 				} else {
 					response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + fmt.Sprint(len(parts[2])) + "\r\n\r\n" + parts[2]
 				}
@@ -80,7 +93,6 @@ func handleConnection(conn net.Conn) {
 				response = "HTTP/1.1 404 Not Found\r\n\r\n"
 			}
 		}
-		fmt.Println(response)
 		_, err = conn.Write([]byte(response))
 
 		if err != nil {
