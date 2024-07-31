@@ -34,7 +34,12 @@ func handleConnection(conn net.Conn) {
 			response = "HTTP/1.1 200 OK\r\n\r\n"
 		} else if parts := strings.SplitN(path, "/", 3); len(parts) >= 2 {
 			if parts[1] == "echo" {
-				response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + fmt.Sprint(len(parts[2])) + "\r\n\r\n" + parts[2]
+				acceptEncoding := request.Header.Get("Accept-Encoding")
+				if acceptEncoding == "gzip" {
+					response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\nContent-Length: " + fmt.Sprint(len(parts[2])) + "\r\n\r\n" + parts[2]
+				} else {
+					response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + fmt.Sprint(len(parts[2])) + "\r\n\r\n" + parts[2]
+				}
 			} else if parts[1] == "user-agent" {
 				response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + fmt.Sprint(len(request.UserAgent())) + "\r\n\r\n" + request.UserAgent()
 			} else if parts[1] == "files" {
@@ -65,7 +70,7 @@ func handleConnection(conn net.Conn) {
 				response = "HTTP/1.1 404 Not Found\r\n\r\n"
 			}
 		}
-
+		fmt.Println(response)
 		_, err = conn.Write([]byte(response))
 
 		if err != nil {
